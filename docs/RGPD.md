@@ -17,7 +17,7 @@
 | Données traitées | `trans_num` (identifiant de transaction), montant, marchand, catégorie, coordonnées du marchand, population de la ville du porteur |
 | Données exclues dès l'entrée | numéro de carte, nom, prénom, adresse, date de naissance, profession, sexe, horodatage, vérité terrain `is_fraud` |
 | Destinataires | Équipe fraude (alertes Discord : identifiant, montant, marchand, catégorie, probabilité) |
-| Durée de conservation | Transactions : 90 jours après le dernier traitement (`updated_at`) · quarantaine : 30 jours · rapports et exports : 30 jours · sauvegardes : 7 jours · journal d'audit : conservé (preuve de conformité) |
+| Durée de conservation | Transactions : 90 jours après le dernier traitement (`updated_at`) · quarantaine : 30 jours · rapports, exports et fichiers source déposés (`data/archive/`, `data/error/`) : 30 jours · sauvegardes : 7 jours · journal d'audit : conservé (preuve de conformité) |
 | Décision automatisée (art. 22) | La prédiction **déclenche une alerte**, elle ne bloque rien : la décision finale reste humaine |
 | Sécurité | Voir § 3 |
 
@@ -26,9 +26,14 @@
 L'API renvoie 21 colonnes. `fetch_transactions` ne laisse passer que les 7 de `CHAMPS_CONSERVES`
 (`dags/fraud_pipeline/config.py`) ; l'ingestion batch ne conserve que ces colonnes (pour un CSV,
 seules elles sont lues : `usecols` ; pour JSON et Parquet, les autres sont écartées en mémoire avant
-tout traitement). Les autres n'existent nulle part : ni en XCom, ni dans l'interface Airflow, ni en base,
-ni dans les logs. Un test (`test_lot_separe_valides_et_rejetes_et_ecarte_les_donnees_personnelles`)
-vérifie qu'un numéro de carte ou un nom présent dans un fichier ne franchit pas le contrôle.
+tout traitement). Les autres colonnes n'existent nulle part dans le traitement : ni en XCom, ni dans
+l'interface Airflow, ni en base, ni dans les logs. Un test
+(`test_lot_separe_valides_et_rejetes_et_ecarte_les_donnees_personnelles`) vérifie qu'un numéro de
+carte ou un nom présent dans un fichier ne franchit pas le contrôle.
+
+Seule exception : le fichier déposé lui-même, archivé tel quel dans `data/archive/` (ou
+`data/error/` s'il est illisible) pour la traçabilité de la source. Il est supprimé au bout de
+`files_retention_days` (30 j) par `rgpd_maintenance`.
 
 Seules 4 de ces 7 colonnes servent au modèle ; les 3 autres servent à l'alerte et à l'identification
 de la transaction (nécessaire pour exercer les droits).
@@ -69,7 +74,8 @@ fondée sur le consentement était ajoutée (ex. réutilisation pour de la prosp
 nécessiterait une table `consentements` consultée par le filtrage à l'entrée ; ce n'est pas le cas.
 
 **Conservation** : DAG `rgpd_maintenance`, chaque nuit — purge des transactions au-delà de
-`retention_days` (90 j), de la quarantaine (30 j), des fichiers (30 j), journalisée avec le nombre de
+`retention_days` (90 j), de la quarantaine (30 j), des fichiers — rapports, exports, fichiers source
+archivés ou en erreur (30 j), journalisée avec le nombre de
 lignes supprimées.
 
 ## 5. Traçabilité (art. 5-2, responsabilité)

@@ -272,7 +272,7 @@ Détails : [`docs/RGPD.md`](docs/RGPD.md) (registre de traitement, procédures).
 | Minimisation | 7 colonnes sur 21 conservées à l'entrée ; aucune donnée directement identifiante stockée |
 | Sécurité | Secrets dans `.env` (non versionné) ; clé Fernet obligatoire (connexions chiffrées) ; mots de passe SCRAM-SHA-256 ; Grafana en lecture seule sur le seul schéma `monitoring` ; ports sur `127.0.0.1` |
 | Droits des personnes | DAG `rgpd_requests` : accès (export JSON), rectification, effacement |
-| Conservation | Purge automatique au-delà de 90 jours (`retention_days`), quarantaine 30 jours, fichiers 30 jours |
+| Conservation | Purge automatique au-delà de 90 jours (`retention_days`), quarantaine 30 jours, fichiers (rapports, exports, fichiers source déposés) 30 jours |
 | Traçabilité | Chaque ligne porte `source`, `dag_run_id`, `model_version`, dates ; `audit.journal` trace accès, rectifications, effacements, purges, sauvegardes, incidents ; PostgreSQL journalise connexions et DDL |
 | Violations de données | `pipeline_monitoring` détecte rôles et sessions non autorisés et disparitions de données non journalisées → journal + alerte SÉCURITÉ ; procédure 72 h dans `docs/RGPD.md` |
 
@@ -288,7 +288,7 @@ Variables Airflow, prises en compte au run suivant sans redémarrage :
 | `demo_fraud` | `0` | À `1`, rejoue une fraude connue au lieu d'appeler l'API |
 | `retention_days` | `90` | Durée de conservation des transactions |
 | `rejected_retention_days` | `30` | Durée de conservation de la quarantaine |
-| `files_retention_days` | `30` | Rapports et exports RGPD |
+| `files_retention_days` | `30` | Rapports, exports RGPD, fichiers source archivés ou en erreur |
 | `backups_kept` | `7` | Nombre de sauvegardes conservées |
 | `monitoring_thresholds` | voir `config.py` | JSON ; on peut ne surcharger qu'un seuil, ex. `{"duration_p95_s": 60}` |
 

@@ -13,7 +13,8 @@ jobs:
         with:
           python-version: "3.11"
       - name: Dépendances
-        run: pip install -r requirements-dev.txt "pandas==1.5.*"
+        # numpy < 2 : pandas 1.5 (version de l'image Airflow) est compilé contre numpy 1.x.
+        run: pip install -r requirements-dev.txt "pandas==1.5.*" "numpy<2"
       - name: Lint (ruff)
         run: ruff check dags tests data/train_model.py
       - name: Tests unitaires (les tests d'intégrité des DAGs nécessitent Airflow et sont ignorés ici)

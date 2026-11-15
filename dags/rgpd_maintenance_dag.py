@@ -7,7 +7,9 @@ backup_database → purge_expired_data → purge_old_files
   veille.
 - purge_expired_data : supprime les transactions plus anciennes que `retention_days`
   (90 jours par défaut) et la quarantaine au-delà de `rejected_retention_days`.
-- purge_old_files : supprime rapports et exports RGPD au-delà de `files_retention_days`.
+- purge_old_files : supprime rapports, exports RGPD et fichiers source (archivés ou en erreur)
+  au-delà de `files_retention_days`. Les fichiers source contiennent toutes les colonnes d'origine,
+  données personnelles comprises : ils ne doivent pas être conservés indéfiniment.
 
 Toutes les durées sont des Variables Airflow ; chaque opération est tracée dans `audit.journal`.
 """
@@ -18,7 +20,14 @@ from airflow.operators.python import PythonOperator
 
 from fraud_pipeline import rgpd
 from fraud_pipeline.alerts import notify_failure
-from fraud_pipeline.config import REPORTS_DIR, RGPD_EXPORT_DIR, get_setting, log
+from fraud_pipeline.config import (
+    ARCHIVE_DIR,
+    ERROR_DIR,
+    REPORTS_DIR,
+    RGPD_EXPORT_DIR,
+    get_setting,
+    log,
+)
 
 default_args = {
     "owner": "airflow",
@@ -39,7 +48,9 @@ def purge_expired_data(**context):
 
 
 def purge_old_files(**context):
-    removed = rgpd.purge_old_files([REPORTS_DIR, RGPD_EXPORT_DIR], get_setting("files_retention_days"))
+    removed = rgpd.purge_old_files(
+        [REPORTS_DIR, RGPD_EXPORT_DIR, ARCHIVE_DIR, ERROR_DIR], get_setting("files_retention_days"),
+    )
     log.info("[PURGE] %s fichier(s) supprimé(s)", removed)
 
 

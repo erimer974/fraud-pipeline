@@ -51,7 +51,7 @@ DEFAULTS = {
     "demo_fraud": "0",          # "1" : rejoue une fraude connue au lieu d'appeler l'API
     "retention_days": 90,       # durée de conservation des transactions (RGPD)
     "rejected_retention_days": 30,
-    "files_retention_days": 30,  # rapports et exports RGPD sur disque
+    "files_retention_days": 30,  # rapports, exports RGPD, fichiers source archivés ou en erreur
     "backups_kept": 7,
     "monitoring_thresholds": {
         "window_min": 30,          # fenêtre d'observation des runs temps réel
