@@ -31,11 +31,3 @@ __pycache__/
 .DS_Store
 .idea/
 .vscode/
-
-# Documentation locale
-GUIDE.md
-SOUTENANCE_QA.md
-SOUTENANCE_RECIT.md
-Soutenance_BC03_fraud-pipeline.pptx
-Soutenance_BC03_fraud-pipeline.pdf
-video
