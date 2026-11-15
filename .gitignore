@@ -1,0 +1,41 @@
+# Airflow
+logs/
+*.log
+
+# Données & modèle (volumineux, non versionnés)
+data/*.csv
+data/*.pkl
+data/reports/
+data/model_card.json
+data/inbox/
+data/archive/
+data/error/
+data/backups/
+data/rgpd_exports/
+
+# Secrets / variables d'environnement
+.env
+*.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Sauvegardes
+*.bak
+
+# OS / éditeurs
+.DS_Store
+.idea/
+.vscode/
+
+# Documentation locale
+GUIDE.md
+SOUTENANCE_QA.md
+SOUTENANCE_RECIT.md
+Soutenance_BC03_fraud-pipeline.pptx
+Soutenance_BC03_fraud-pipeline.pdf
+video

@@ -1,0 +1,829 @@
+{
+  "uid": "fraud-pipeline",
+  "title": "Pipeline de détection de fraude",
+  "tags": [
+    "fraude",
+    "airflow"
+  ],
+  "timezone": "browser",
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Minutes depuis le dernier run réussi",
+      "description": "Fraîcheur du pipeline temps réel. Au-delà de 5 min, le DAG pipeline_monitoring alerte.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "fraud-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "fraud-metrics"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT EXTRACT(EPOCH FROM now() - max(ended_at)) / 60 AS \"minutes\" FROM monitoring.pipeline_runs WHERE dag_id = 'fraud_realtime' AND status <> 'failed'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 3
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Transactions traitées",
+      "description": "API + ingestion batch, sur la période affichée.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "fraud-metrics"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "fraud-metrics"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT coalesce(sum(rows_ok), 0) AS \"transactions\" FROM monitoring.pipeline_runs WHERE dag_id IN ('fraud_realtime', 'fraud_batch_ingest') AND $__timeFilter(ended_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Fraudes détectées",
+      "description": "Prédictions positives du modèle sur la période.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "fraud-metrics"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "fraud-metrics"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT coalesce(sum(frauds), 0) AS \"fraudes\" FROM monitoring.pipeline_runs WHERE dag_id IN ('fraud_realtime', 'fraud_batch_ingest') AND $__timeFilter(ended_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Taux d'échec des runs",
+      "description": "Tous DAGs confondus. Seuil d'alerte : 20 %.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "fraud-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "fraud-metrics"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT 100.0 * count(*) FILTER (WHERE status = 'failed') / nullif(count(*), 0) AS \"échecs\" FROM monitoring.pipeline_runs WHERE $__timeFilter(ended_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 20
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Durée moyenne d'un run",
+      "description": "Temps de traitement de bout en bout d'une transaction (API → base).",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "fraud-metrics"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "fraud-metrics"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT avg(duration_s) AS \"durée\" FROM monitoring.pipeline_runs WHERE dag_id = 'fraud_realtime' AND $__timeFilter(ended_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 45
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Latence moyenne de l'API",
+      "description": "Temps de réponse de l'API Hugging Face.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "fraud-metrics"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "fraud-metrics"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT avg(api_latency_ms) AS \"latence\" FROM monitoring.pipeline_runs WHERE dag_id = 'fraud_realtime' AND $__timeFilter(ended_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 8000
+              },
+              {
+                "color": "red",
+                "value": 10000
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Durée des runs temps réel",
+      "description": "Une hausse durable signale une dégradation (API, base, worker).",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "fraud-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "fraud-metrics"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT ended_at AS \"time\", duration_s AS \"durée du run\" FROM monitoring.pipeline_runs WHERE dag_id = 'fraud_realtime' AND $__timeFilter(ended_at) ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "stacking": {
+              "mode": "none"
+            },
+            "pointSize": 4,
+            "showPoints": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Latence de l'API",
+      "description": "",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "fraud-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "fraud-metrics"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT ended_at AS \"time\", api_latency_ms AS \"latence\" FROM monitoring.pipeline_runs WHERE dag_id = 'fraud_realtime' AND api_latency_ms IS NOT NULL AND $__timeFilter(ended_at) ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "stacking": {
+              "mode": "none"
+            },
+            "pointSize": 4,
+            "showPoints": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Volume traité par heure",
+      "description": "Transactions valides, rejetées par le contrôle qualité, et fraudes prédites.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "fraud-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "fraud-metrics"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroupAlias(ended_at, 1h), sum(rows_ok) AS \"valides\", sum(rows_rejected) AS \"rejetées (quarantaine)\", sum(frauds) AS \"fraudes\" FROM monitoring.pipeline_runs WHERE dag_id IN ('fraud_realtime', 'fraud_batch_ingest') AND $__timeFilter(ended_at) GROUP BY 1 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "none"
+            },
+            "pointSize": 4,
+            "showPoints": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "valides"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rejetées (quarantaine)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "fraudes"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Statut des runs par heure",
+      "description": "Tous DAGs confondus.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "fraud-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "fraud-metrics"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroupAlias(ended_at, 1h), count(*) FILTER (WHERE status = 'success') AS \"succès\", count(*) FILTER (WHERE status = 'rejected') AS \"donnée rejetée\", count(*) FILTER (WHERE status = 'failed') AS \"échec\" FROM monitoring.pipeline_runs WHERE $__timeFilter(ended_at) GROUP BY 1 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal"
+            },
+            "pointSize": 4,
+            "showPoints": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "succès"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "donnée rejetée"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "échec"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Débit des traitements batch",
+      "description": "Indicateur de performance : débit mesuré à chaque ingestion et rapport.",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "fraud-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "fraud-metrics"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT ended_at AS \"fin\", dag_id AS \"DAG\", rows_in AS \"lignes lues\", rows_ok AS \"valides\", rows_rejected AS \"rejetées\", duration_s AS \"durée (s)\", rows_per_s AS \"lignes/s\" FROM monitoring.pipeline_runs WHERE dag_id IN ('fraud_batch_ingest', 'fraud_daily_report') AND $__timeFilter(ended_at) ORDER BY ended_at DESC LIMIT 20"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Alertes émises",
+      "description": "Historique des alertes Discord (après déduplication).",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "fraud-metrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "fraud-metrics"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT raised_at AS \"date\", severity AS \"sévérité\", alert_key AS \"règle\", message FROM monitoring.alerts WHERE $__timeFilter(raised_at) ORDER BY raised_at DESC LIMIT 50"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "Derniers runs",
+      "description": "",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "fraud-metrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "fraud-metrics"
+          },
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT ended_at AS \"fin\", dag_id AS \"DAG\", status AS \"statut\", failed_tasks AS \"tâches en échec\", duration_s AS \"durée (s)\", rows_ok AS \"lignes\", frauds AS \"fraudes\", model_version AS \"modèle\" FROM monitoring.pipeline_runs WHERE $__timeFilter(ended_at) ORDER BY ended_at DESC LIMIT 100"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    }
+  ],
+  "description": "Suivi en temps réel du pipeline : fraîcheur, volumes, durées, latence, erreurs et alertes. Source : schéma monitoring de fraud-db."
+}

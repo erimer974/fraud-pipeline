@@ -1,0 +1,22 @@
+# Configuration des outils de qualité de code (pas un paquet installable).
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+src = ["dags"]
+
+[tool.ruff.lint]
+# E/F : erreurs pyflakes et style PEP 8 · I : ordre des imports · B : pièges courants
+# UP : syntaxe Python moderne · BLE : `except Exception` doit être justifié
+select = ["E", "F", "I", "B", "UP", "BLE"]
+ignore = [
+    "E221",  # alignement volontaire des affectations dans les DAGs
+    "E241",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["fraud_pipeline"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["dags"]

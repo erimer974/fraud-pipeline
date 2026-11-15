@@ -1,0 +1,17 @@
+# Source de données Grafana : schéma `monitoring` de fraud-db, en lecture seule.
+apiVersion: 1
+datasources:
+  - name: fraud-metrics
+    uid: fraud-metrics
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: fraud-db:5432
+    user: grafana_reader
+    isDefault: true
+    jsonData:
+      database: ${FRAUD_DB_NAME}
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: false
+    secureJsonData:
+      password: ${GRAFANA_DB_PASSWORD}

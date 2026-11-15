@@ -1,0 +1,10 @@
+# Les tableaux de bord sont versionnés dans grafana/dashboards/ et chargés au démarrage.
+apiVersion: 1
+providers:
+  - name: fraud-pipeline
+    folder: Pipeline fraude
+    type: file
+    disableDeletion: true
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

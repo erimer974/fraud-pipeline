@@ -1,0 +1,29 @@
+# Intégration continue : à chaque push, le code est vérifié (lint) et testé avant d'atteindre
+# l'orchestrateur. Un DAG cassé est ainsi détecté au commit, pas au premier run.
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Dépendances
+        run: pip install -r requirements-dev.txt "pandas==1.5.*"
+      - name: Lint (ruff)
+        run: ruff check dags tests data/train_model.py
+      - name: Tests unitaires (les tests d'intégrité des DAGs nécessitent Airflow et sont ignorés ici)
+        run: pytest -v
+  dag-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construire l'image et charger tous les DAGs
+        run: |
+          docker build -t fraud-pipeline-ci .
+          docker run --rm -v "$PWD/dags:/opt/airflow/dags" -v "$PWD/tests:/opt/airflow/tests" \
+            fraud-pipeline-ci bash -c "airflow db migrate >/dev/null && pytest -v /opt/airflow/tests"
