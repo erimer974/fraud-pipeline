@@ -6,6 +6,7 @@ permet au pipeline de reprendre après une erreur sans intervention ni nettoyage
 """
 import json
 import logging
+import math
 
 from fraud_pipeline.config import POSTGRES_CONN_ID
 
@@ -78,7 +79,9 @@ def insert_rejected(rejected: list, source: str, dag_run_id: str) -> int:
     values = [
         (
             str(r["record"].get("trans_num") or ""),
-            json.dumps(r["record"], default=str),
+            # NaN (champ vide d'un CSV) n'est pas du JSON valide pour PostgreSQL : il devient null.
+            json.dumps({k: None if isinstance(v, float) and math.isnan(v) else v
+                        for k, v in r["record"].items()}, default=str),
             r["reasons"],
             source,
             dag_run_id,
