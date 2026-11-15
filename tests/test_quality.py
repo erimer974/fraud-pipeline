@@ -44,10 +44,13 @@ def test_lot_separe_valides_et_rejetes_et_ecarte_les_donnees_personnelles():
     df = pd.DataFrame([
         {**VALID, "cc_num": 4111111111111111, "first": "Jane", "is_fraud": 1},
         {**VALID, "trans_num": "bad", "amt": -1, "cc_num": 4000, "first": "John", "is_fraud": 0},
+        # champ texte vide dans un CSV : pandas le lit en NaN, il doit être vu comme manquant
+        {**VALID, "trans_num": "vide", "merchant": float("nan"), "cc_num": 4001, "is_fraud": 0},
     ])
     valid, rejected = split_valid_rejected(df)
     assert [v["trans_num"] for v in valid] == ["abc123"]
-    assert rejected[0]["record"]["trans_num"] == "bad"
+    assert [r["record"]["trans_num"] for r in rejected] == ["bad", "vide"]
+    assert "merchant" in rejected[1]["reasons"]
     # Ni la vérité terrain ni les données personnelles ne franchissent le contrôle.
     for record in valid + [r["record"] for r in rejected]:
         assert not {"cc_num", "first", "is_fraud"} & set(record)

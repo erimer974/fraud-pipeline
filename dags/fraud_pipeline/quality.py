@@ -25,14 +25,26 @@ def _is_number(value) -> bool:
         return False
 
 
+NUMERIC_FIELDS = ("amt", "city_pop", "merch_lat", "merch_long")
+
+
+def _is_missing(field: str, value) -> bool:
+    """Valeur absente : None ou chaîne vide ; pour un champ texte, aussi NaN — un champ vide d'un CSV
+    arrive en NaN via pandas, et deviendrait sinon la chaîne « nan ». Un NaN numérique est signalé
+    plus bas comme « non numérique »."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return True
+    return field not in NUMERIC_FIELDS and isinstance(value, float) and math.isnan(value)
+
+
 def validate_transaction(t: dict) -> list:
     """Renvoie la liste des anomalies d'une transaction (liste vide = transaction valide)."""
     errors = []
-    missing = [c for c in CHAMPS_CONSERVES if t.get(c) is None or t.get(c) == ""]
+    missing = [c for c in CHAMPS_CONSERVES if _is_missing(c, t.get(c))]
     if missing:
         errors.append(f"champs manquants : {', '.join(missing)}")
 
-    for field in ("amt", "city_pop", "merch_lat", "merch_long"):
+    for field in NUMERIC_FIELDS:
         if field not in missing and not _is_number(t.get(field)):
             errors.append(f"{field} non numérique : {t.get(field)!r}")
     if errors:
